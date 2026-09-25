@@ -1,6 +1,6 @@
 # G²MAF project page
 
-https://guowei-zou.github.io/g2maf/
+https://g2maf.github.io/
 
 Static HTML/CSS/JavaScript published with GitHub Pages from the main branch.
 
