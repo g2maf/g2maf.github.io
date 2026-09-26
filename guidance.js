@@ -89,8 +89,20 @@
   $('[data-g-direct-event]').textContent=tasks.find(x=>x[0]===data.task)[1]+' · Medium · '+tr('第 ','Decision ')+(idx+1)+tr(' 步 · 智能体 ',' · Agent ')+(a+1)+(data.domain==='SMAC'?' · '+actionName(d.proposal_action[a])+' → '+actionName(d.refined_action[a]):'');
   $('[data-g-direction-title]').textContent=tr('原动作 → Q 引导方向 → 新动作','Original → Q-guidance direction → refined');
   c.font='16px system-ui';c.textAlign='left';
-  if(data.domain==='MPE'){const x=300,y=215,sc=130,b=d.proposal[a],z=d.refined[a],g=d.gradient[a];c.strokeStyle='#e2dce8';c.beginPath();c.moveTo(80,y);c.lineTo(550,y);c.moveTo(x,50);c.lineTo(x,370);c.stroke();arrow(c,x,y,b[0]*sc,-b[1]*sc,gray,true);arrow(c,x,y,z[0]*sc,-z[1]*sc,purple);arrow(c,x+b[0]*sc,y-b[1]*sc,(z[0]-b[0])*sc,-(z[1]-b[1])*sc,'#d38a13');dot(c,x,y,4,'#483852');c.fillStyle=gray;c.fillText(tr('灰：原动作','Gray: original'),20,25);c.fillStyle='#d38a13';c.fillText(tr('金：引导带来的改变量','Gold: applied correction'),210,25);c.fillStyle=purple;c.fillText(tr('紫：新动作','Purple: refined'),460,25);
-   $('[data-g-direction-note]').textContent=tr('金箭头从原动作端点指向新动作端点，表示引导方向。归一化 Q 梯度 = ','The gold arrow connects action endpoints: the applied guidance direction. Normalized Q gradient = ')+'('+g.map(v=>v.toFixed(3)).join(', ')+')'+tr('；乘步长并裁剪后得到紫色动作。三种箭头同一比例。','; multiply by step size and clip to obtain purple. All arrows share one scale.');
+
+  if(data.domain==='MPE'){
+   const colors=['#387cbd','#289b85','#cb8635','#b45dad'],sc=300/bounds.span,xy=p=>[320+(p.x-bounds.cx)*sc,200-(p.y-bounds.cy)*sc],actScale=55;
+   c.fillStyle='#f0f5f8';c.fillRect(0,0,640,420);c.strokeStyle='#e0e7ed';c.lineWidth=1;for(let x=0;x<640;x+=40){c.beginPath();c.moveTo(x,0);c.lineTo(x,380);c.stroke()}for(let y=0;y<380;y+=40){c.beginPath();c.moveTo(0,y);c.lineTo(640,y);c.stroke()}
+   c.textAlign='center';c.font='12px system-ui';d.state.landmarks.filter(p=>!p.boundary).forEach((p,i)=>{const z=xy(p),r=Math.max(7,p.radius*sc);c.fillStyle=data.task==='simple_spread'?'#ded5ed':'#cbd4db';c.beginPath();c.arc(...z,r,0,Math.PI*2);c.fill();c.strokeStyle='#8997a4';c.lineWidth=1;c.stroke();c.fillStyle='#556674';c.fillText((data.task==='simple_spread'?tr('目标 ','Goal '):data.task==='simple_tag'?tr('障碍 ','Obstacle '):tr('地标 ','Landmark '))+(i+1),z[0],z[1]-r-7)});
+   d.state.agents.forEach((p,i)=>{const z=xy(p),controlled=i<data.n_agents,color=controlled?colors[i%colors.length]:'#d95167';c.strokeStyle=color;c.lineWidth=2;c.globalAlpha=.45;c.beginPath();for(let j=Math.max(0,idx-8);j<=idx;j++){const pt=xy(rec('guided',j).state.agents[i]);j===Math.max(0,idx-8)?c.moveTo(...pt):c.lineTo(...pt)}c.stroke();c.globalAlpha=1;
+    if(controlled){const b=d.proposal[i],r=d.refined[i];arrow(c,...z,b[0]*actScale,-b[1]*actScale,gray,true);arrow(c,...z,r[0]*actScale,-r[1]*actScale,purple);arrow(c,z[0]+b[0]*actScale,z[1]-b[1]*actScale,(r[0]-b[0])*actScale,-(r[1]-b[1])*actScale,'#d38a13')}
+    dot(c,...z,12,color);c.strokeStyle='#fff';c.lineWidth=2;c.beginPath();c.arc(...z,12,0,Math.PI*2);c.stroke();c.fillStyle='white';c.font='bold 12px system-ui';c.fillText(controlled?String(i+1):'P',z[0],z[1]+4);c.fillStyle=color;c.font='bold 12px system-ui';c.fillText(controlled?tr('智能体 ','Agent ')+(i+1):tr('对手 / 猎物','Opponent / prey'),z[0],z[1]+29);
+   });
+   c.fillStyle='#ffffff';c.fillRect(0,380,640,40);c.font='13px system-ui';c.textAlign='left';c.fillStyle=gray;c.fillText(tr('灰虚线：原动作','Gray dashed: original'),15,405);c.fillStyle=purple;c.fillText(tr('紫实线：新动作','Purple: refined'),225,405);c.fillStyle='#bd7812';c.fillText(tr('金箭头：修正方向','Gold: correction'),440,405);
+   $('[data-g-direction-title]').textContent=tr('全部智能体一起看：位置、轨迹和动作','See every agent: positions, trails and actions');
+   $('[data-g-direct-event]').textContent=tasks.find(x=>x[0]===data.task)[1]+' · Medium · '+data.n_agents+tr(' 个受控智能体',' controlled agents')+(d.state.agents.length>data.n_agents?tr(' + 1 个对手',' + 1 opponent'):'')+' · '+tr('第 ','Decision ')+(idx+1)+tr(' 步','');
+   $('[data-g-direction-note]').textContent=tr('彩色编号圆点是不同智能体，淡色尾迹来自引导分支已执行的位置。每个智能体都显示原动作与新动作；金箭头连接两个动作端点。动作箭头采用统一比例，表示动作而非预测位移。','Colored numbered particles are distinct agents; faint trails are executed positions in the guided branch. Every agent shows both actions, with a gold correction between endpoints. Action arrows share one scale and do not represent predicted displacement.');
+
   }else{
 
    const h=420,units=[...d.state.agents,...d.state.enemies],minx=Math.min(...units.map(p=>p.x)),maxx=Math.max(...units.map(p=>p.x)),miny=Math.min(...units.map(p=>p.y)),maxy=Math.max(...units.map(p=>p.y));
